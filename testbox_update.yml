@@ -1,0 +1,5 @@
+- hosts: web
+  remote_user: testbox
+  become: yes
+  roles:
+    - testbox
