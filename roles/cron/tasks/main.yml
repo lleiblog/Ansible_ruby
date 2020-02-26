@@ -1,0 +1,77 @@
+  - name: Install clamav
+    yum: name=clamav state=latest
+  - name: Install clamav-update
+    yum: name=clamav-update state=latest
+    
+  - name: sudo freshclam
+    command: freshclam
+
+  - name: box_cleanup.sh
+    cron:
+      name: "box_cleanup.sh"
+      user: t2box
+      minute: "*/10"
+      hour: "*"
+      day: "*"
+      month: "*" 
+      weekday: "*"
+      job: "/var/www/app/t2box/web/t2box/bin/box_cleanup.sh production"
+      state: present
+
+  - name: tmpfile_cleanup.sh
+    cron:
+      name: "tmpfile_cleanup.sh"
+      user: t2box
+      minute: "01"
+      hour: "0"
+      day: "*"
+      month: "*" 
+      weekday: "*"
+      job: "/var/www/app/t2box/web/t2box/bin/tmpfile_cleanup.sh production"
+      state: present
+
+  - name: sessions_cleanup.sh
+    cron:
+      name: "sessions_cleanup.sh"
+      user: t2box
+      minute: "01"
+      hour: "0"
+      day: "*"
+      month: "*" 
+      weekday: "*"
+      job: "/var/www/app/t2box/web/t2box/bin/sessions_cleanup.sh production"
+      state: present
+
+  - name: virus_scan.sh
+    cron:
+      name: "virus_scan.sh"
+      user: t2box
+      minute: "*"
+      hour: "*"
+      day: "*"
+      month: "*" 
+      weekday: "*"
+      job: "/var/www/app/t2box/web/t2box/bin/virus_scan.sh production"
+      state: present
+
+  - name: 追加、ClamAV定義データベース更新は一日一回。
+    cron:
+      name: "freshclam"
+      user: root
+      minute: "01"
+      hour: "0"
+      day: "*"
+      month: "*"
+      weekday: "*"
+      job: "freshclam"
+      state: present
+
+  - name: set /etc/logrotate.d/t2box
+    template: src=t2box.j2 dest=/etc/logrotate.d/t2box
+    
+  - name: logrotate/etc/logrotate.d/t2box
+    command: /sbin/logrotate /etc/logrotate.d/t2box
+
+  
+  - name: Install mysql-community-client
+    yum: name=mysql-community-client state=latest 

@@ -1,0 +1,10 @@
+/var/www/app/t2box/web/t2box/log/*.log {
+    daily
+    missingok
+    rotate 31
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+    su t2box t2box
+}

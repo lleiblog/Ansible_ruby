@@ -1,0 +1,147 @@
+# ========================================================
+# １．必要なソフトウェアをインストールします。
+# ========================================================
+  - name: os update
+    yum: name=* state=latest
+  - name: Install git
+    yum: name=git state=latest
+  - name: Install sqlite
+    yum: name=sqlite state=latest
+  - name: Install sqlite-devel     
+    yum: name=sqlite-devel state=latest 
+  - name: Install httpd-devel     
+    yum: name=httpd-devel state=latest 
+  - name: Install curl-devel     
+    yum: name=curl-devel state=latest 
+  - name: Install apr-devel     
+    yum: name=apr-devel state=latest 
+  - name: Install apr-util-devel     
+    yum: name=apr-util-devel state=latest
+  - name: Install libffi-devel    
+    yum: name=libffi-devel state=latest 
+  - name: Install openssh     
+    yum: name=openssh state=latest 
+  - name: Install gem     
+    yum: name=gem state=latest
+  - name: Install mysql-devel      
+    yum: name=mysql-devel  state=latest
+  - name: Install bzip2
+    yum: name=bzip2 state=latest
+# ========================================================
+# ２．rbenv、ruby-build、Rubyをインストールします。
+# ========================================================
+    
+  - name: clone rbenv repo
+    git: repo=https://github.com/sstephenson/rbenv.git dest=/usr/local/rbenv
+    
+  - name: clone ruby-build repo
+    git: repo=https://github.com/sstephenson/ruby-build.git dest=/usr/local/rbenv/plugins/ruby-build
+      
+  - name: copy /etc/sudoers.d/rbenv
+    template: src=rbenv dest=/etc/sudoers.d/rbenv
+  - name: copy /profile.d/rbenv.sh
+    template: src=rbenv.sh dest=/etc/profile.d/rbenv.sh
+
+  - name: 777 /usr/local/rbenv
+    file: path=/usr/local/rbenv mode=0777
+        
+  - name: Install kernel-headers
+    yum: name=http://nginx.org/packages/centos/6/noarch/RPMS/nginx-release-centos-6-0.el6.ngx.noarch.rpm state=present
+
+  - name: Install gcc
+    yum: name=gcc state=latest
+  - name: Install openssl-devel
+    yum: name=openssl-devel state=latest   
+  - name: Install readline-devel
+    yum: name=readline-devel state=latest   
+    
+  - name: install ruby
+    shell: rbenv install 2.3.0
+    become: no
+    failed_when: False
+
+  - name: set global ruby
+    shell: rbenv global 2.3.0
+    become: no
+    
+# ========================================================
+# ３．必要なgemをインストールします。
+# ========================================================
+
+  - name: Install gcc-c++
+    yum: name=gcc-c++ state=latest
+  - name: gem Install libv8
+    gem: name=libv8 state=latest
+  - name: gem install rails 
+    command: gem install rails
+    become: no
+  - name: gem install passenger
+    command: gem install passenger
+    become: no
+  - name: gem install therubyracer
+    command: gem install therubyracer
+    become: no
+  - name: gem install mysql2
+    command: gem install mysql2
+    become: no
+  - name: gem install bundler
+    command: gem install bundler
+    become: no
+# ========================================================
+# ４．passengerモジュールをApacheにインストールします。
+# ========================================================
+  - name: passenger-module should be installed
+    command: "passenger-install-apache2-module --auto"
+    
+# ========================================================
+# ５．Apacheへの設定を追加します。
+# ========================================================
+  - name: set passenger.conf
+    raw: passenger-install-apache2-module --snippet > /home/webtest/passenger.conf
+    become: no
+  - name: passenger.conf to /etc/httpd/conf.d/"
+    command: "mv /home/webtest/passenger.conf /etc/httpd/conf.d/"
+    
+# ========================================================
+# ６．アップロード用モジュール「apreq2」「modporter」をインストール。
+# ========================================================
+  - name: Install epel-release     
+    yum: name=epel-release state=latest
+  - name: Install libapreq2     
+    yum: name=libapreq2 state=latest
+  - name: Install libapreq2-devel     
+    yum: name=libapreq2-devel state=latest
+
+  - name: clone modporter.git repo
+    git: repo=https://github.com/actionrails/modporter.git dest=/home/webtest/temp/modporter/
+  - name: rake
+    command: rake chdir=/home/webtest/temp/modporter
+    
+  - name: set porter.conf
+    copy: src=porter.conf dest=/etc/httpd/conf.modules.d/ owner=root group=root mode=0664
+  - name: set rails.conf
+    copy: src=rails.conf dest=/etc/httpd/conf.d/ owner=root group=root mode=0664
+    
+# ========================================================
+# 7．SELinuxの無効化。
+# ========================================================
+  - name: set SELinux
+    selinux: policy=targeted state=permissive
+
+  - name: setenforce 0
+    command: /sbin/setenforce 0
+# ========================================================
+# 8．rbenvフォルダ権限を調整します
+# ========================================================
+  - name: chmod go-w -R /usr/local/rbenv
+    file:
+      dest: /usr/local/rbenv
+      state: directory
+      mode: go-w
+      recurse: yes
+      
+# ========================================================
+# 9．Apacheを再起動します
+# ========================================================
+  - name: Apacheを再起動します
+    service: name=httpd state=restarted  

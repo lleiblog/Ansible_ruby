@@ -1,0 +1,87 @@
+# ========================================================
+# １．納品物のモジュール「webtest.zip」を作業フォルダ「~/temp/」に転送。
+# ２．「webtest.zip」を解凍します。
+# ======================================================== 
+  - name: yum unzip
+    yum: name=unzip state=latest 
+  - name: copy webtest.zip
+    copy: src=webtest.zip dest=/home/webtest/temp
+  - name: mkdir /var/www/app
+    file: path=/var/www/app/ state=directory owner=webtest group=webtest
+  - name: uzip webtest.zip
+    unarchive: src=/home/webtest/temp/webtest.zip dest=/var/www/app copy=no owner=webtest group=webtest mode=0774
+# ========================================================
+# 3．データベース設定を編集します。
+# ======================================================== 
+  - name: get mysql57
+    yum: name=http://repo.mysql.com/mysql57-community-release-el7-7.noarch.rpm state=present
+  - name: Install mysql-devel
+    yum: name=mysql-devel state=latest
+  - name: Install libicu-devel
+    yum: name=libicu-devel state=latest
+        
+  - name: install webtest bundle install
+    shell: cd /var/www/app/webtest/web/webtest/ && bundle install
+    become: no
+# ========================================================
+# ４．データベース設定を編集します。
+# ========================================================      
+  - name: set database.yml
+    template: src=database.yml.j2 dest=/var/www/app/webtest/web/webtest/config/database.yml owner=webtest group=webtest mode=0774
+    become: no
+# ========================================================
+# ５ メールサーバとドメインを確認し、設定ファイルを適当に修正します
+# ========================================================  
+  - name: set app_config.yml
+    template: src=app_config.yml dest=/var/www/app/webtest/config/ mode=0774
+    become: no
+    
+  - name: set mail_allowed_domain.config
+    template: src=mail_allowed_domain.config dest=/var/www/app/webtest/config/ mode=0774
+    become: no
+      
+  - name: set reverse_dns_lookup.config
+    template: src=reverse_dns_lookup.config dest=/var/www/app/webtest/config/ mode=0774
+    become: no
+    
+  - name: set top_level_domain.config
+    template: src=top_level_domain.config dest=/var/www/app/webtest/config/ mode=0774
+    become: no
+    
+  - name: set mail_template
+    copy: src=mail_template/ dest=/var/www/app/webtest/template mode=0774
+    become: no
+
+# ========================================================
+# ５．ファイル格納する共有フォルダ（今回は/data/）へのリンクを作成します。    
+# ========================================================
+  - file: path=/data owner=webtest group=webtest
+  - name: mkdir/data/file_server/tmp/download
+    file: path=/data/file_server/tmp/download state=directory
+    become: no
+    
+  - name: ln -s /data/file_server file_server
+    file:
+      src: /data/file_server
+      dest: /var/www/app/webtest/file_server
+      state: link
+    become: no    
+
+  - name: ln -s /data/file_server/tmp/download download
+    file:
+      src: /data/file_server/tmp/download
+      dest: /var/www/app/webtest/web/webtest/tmp/download
+      state: link
+    become: no
+    
+# ========================================================
+# ６．「webtest」をApacheに公開します。 
+# ========================================================
+  - name: ln -s /var/www/app/webtest/web/webtest/public webtest
+    file:
+      src: /var/www/app/webtest/web/webtest/public
+      dest: /var/www/html/webtest
+      state: link
+ 
+  - name: Apacheを再起動します
+    service: name=httpd state=restarted 

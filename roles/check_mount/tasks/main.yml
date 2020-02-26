@@ -1,0 +1,8 @@
+  - name: /data mount check
+    shell: df | grep -w "/data"
+    register: mount_check
+    failed_when: mount_check.rc not in [0,1]
+  - shell: echo "/data:未マウント"
+    when: mount_check.rc not in [0]
+    register: mount_check_err
+    failed_when: mount_check.rc not in [0]

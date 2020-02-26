@@ -1,0 +1,83 @@
+# ========================================================
+# 1-2.os update 追加 MySQL-python
+# ========================================================
+  - name: os update
+    yum: name=* state=latest
+
+  - name: Install MySQL-python
+    yum: name=MySQL-python state=latest
+# ========================================================
+# ３．MySQLをインストールします。
+# ========================================================   
+  - name: Install wget
+    yum: name=wget state=latest
+    
+  - name: get mysql57
+    yum: name=http://repo.mysql.com/mysql57-community-release-el7-7.noarch.rpm state=present
+    
+  - name: os update
+    yum: name=* state=latest
+    
+  - name: Install MySQL Server
+    yum: name=mysql-server state=present
+# ========================================================
+# ４．MySQLサービスを自動起動に設定。
+# ========================================================    
+  - name: Start MySQL Server
+    service: name=mysqld　state=started　enabled=yes    
+  - name: systemctl start mysqld
+    command: systemctl start mysqld
+# ========================================================
+# ５．MySQLのrootユーザのパスワードを変更します。
+# ========================================================
+  - name: get mysql password
+    shell: cat /var/log/mysqld.log | grep "temporary password" | awk '{print $11}'
+    register: mysql_root_password
+
+  - name: copy .my.cnf
+    template: src=my.cnf.j2 dest=/root/.my.cnf owner=root group=root mode=0755
+     
+  - name: check mysql root password
+    shell: mysql -u root -p'{{ mysql_root_password.stdout }}' --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{root_db_password}}';"
+    failed_when: False
+
+  - name: create database webtest 
+    mysql_db: name=webtest state=present login_password={{root_db_password}} login_user=root
+    become: no
+    
+  - name: create database webtest_test
+    mysql_db: name=webtest_test state=present login_password={{root_db_password}} login_user=root
+    become: no
+    
+  - name: setup mysql user webtest
+    shell: mysql -uroot -p'{{root_db_password}}' -e "grant all on webtest.* to 'webtest' identified by '{{webtest_db_password}}'"
+    become: no
+
+  - name: setup mysql user webtest_test
+    shell: mysql -uroot -p'{{root_db_password}}' -e "grant all on webtest_test.* to 'webtest'"
+    become: no
+    
+# ========================================================  
+# ６．import sql
+# ========================================================  
+  - name: copy webtest.sql
+    copy: src=webtest.sql dest=/home/webtest/temp/
+    become: no
+    
+  - name: import sql webtest
+    mysql_db: name=webtest state=import target=/home/webtest/temp/webtest.sql login_password={{webtest_db_password}} login_user=webtest
+    become: no
+    
+  - name: import sql webtest_test
+    mysql_db: name=webtest_test state=import target=/home/webtest/temp/webtest.sql login_password={{webtest_db_password}} login_user=webtest
+    become: no
+    
+  - name: delete webtest.sql
+    file: path=/home/webtest/temp/webtest.sql state=absent
+    become: no
+    
+  - name: Open firewall/3306
+    command: firewall-cmd --permanent --add-service=mysql
+  - name: restarted firewalld
+    service: name=firewalld state=restarted
+

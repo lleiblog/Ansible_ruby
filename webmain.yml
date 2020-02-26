@@ -1,10 +1,10 @@
 - hosts: web
-  remote_user: testbox
+  remote_user: webtest
   become: yes
   roles:
     - check_mount
     - apache
     - ruby
-    - testbox
+    - webtest
     - cron
     

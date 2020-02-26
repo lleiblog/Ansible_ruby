@@ -1,0 +1,16 @@
+  - name: os update
+    yum: name=* state=latest
+  - name: Install Httpd
+    yum: name=httpd state=latest
+  - name: Start Httpd Service
+    service: name=httpd enabled=yes state=started
+  - name: Start firewalld
+    service: name=firewalld state=started
+  - name: Open firewall/80
+    command: firewall-cmd --add-port=80/tcp --permanent
+  - name: Open firewall/443
+    command: firewall-cmd --add-port=443/tcp --permanent
+  - name: restarted firewalld
+    service: name=firewalld state=restarted
+  - name: usermod apache
+    shell: /usr/sbin/usermod -a -G apache,webtest apache
